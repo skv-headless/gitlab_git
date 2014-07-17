@@ -15,18 +15,22 @@ module Gitlab
 
           return nil unless blob_entry
 
-          blob = repository.lookup(blob_entry[:oid])
+          if blob_entry[:type]
+            blob = repository.lookup(blob_entry[:oid])
 
-          if blob
-            Blob.new(
-              id: blob.oid,
-              name: blob_entry[:name],
-              size: blob.size,
-              data: blob.content,
-              mode: blob_entry[:mode],
-              path: path,
-              commit_id: sha,
-            )
+            if blob
+              Blob.new(
+                  id: blob.oid,
+                  name: blob_entry[:name],
+                  size: blob.size,
+                  data: blob.content,
+                  mode: blob_entry[:mode],
+                  path: path,
+                  commit_id: sha,
+              )
+            end
+          else
+            submodule_blob(blob_entry, path, sha)
           end
         end
 
@@ -34,9 +38,9 @@ module Gitlab
           blob = repository.lookup(sha)
 
           Blob.new(
-            id: blob.oid,
-            size: blob.size,
-            data: blob.content,
+              id: blob.oid,
+              size: blob.size,
+              data: blob.content,
           )
         end
 
@@ -63,16 +67,21 @@ module Gitlab
 
           if path_arr.size > 1
             return nil unless entry[:type] == :tree
-          else
-            return nil unless entry[:type] == :blob
-          end
-
-          if path_arr.size > 1
             path_arr.shift
             find_entry_by_path(repository, entry[:oid], path_arr.join('/'))
           else
-            entry
+            [:blob, nil].include?(entry[:type]) ? entry : nil
           end
+        end
+
+        def submodule_blob(blob_entry, path, sha)
+          Blob.new(
+              id: blob_entry[:oid],
+              name: blob_entry[:name],
+              data: "",
+              path: path,
+              commit_id: sha,
+          )
         end
       end
 
