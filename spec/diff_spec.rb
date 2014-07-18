@@ -51,4 +51,17 @@ describe Gitlab::Git::Diff do
       its(:diff) { should include '+class Feature' }
     end
   end
+
+  describe :file_modes do
+    context :submodule do
+      let(:diffs) do
+        Gitlab::Git::Diff.between(repository,
+                                  '5937ac0a7beb003549fc5fd26fc247adbce4a52e',
+                                  '570e7b2abdd848b95f2f578043fc23bd6f6fd24d')
+      end
+      subject { diffs[1] }
+
+      its(:a_mode) { should == "160000" }
+    end
+  end
 end
