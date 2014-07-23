@@ -65,6 +65,11 @@ module Gitlab
         hash
       end
 
+      def submodule?
+        #TODO NOTE FIXME added submodules a_mode is nil in grit
+        a_mode == "160000" || b_mode == "160000"
+      end
+
       private
 
       def init_from_rugged(patch)
