@@ -9,7 +9,7 @@ module Gitlab
       attr_accessor :raw_diff
 
       # Diff properties
-      attr_accessor :old_path, :new_path, :a_mode, :b_mode, :diff
+      attr_accessor :old_path, :new_path, :a_mode, :b_mode, :diff, :hunks
 
       # Stats properties
       attr_accessor  :new_file, :renamed_file, :deleted_file
@@ -21,8 +21,13 @@ module Gitlab
           # From the git documentation: "git diff A...B" is equivalent to "git diff $(git-merge-base A B) B"
           common_commit = repo.merge_base_commit(head, base)
 
-          repo.diff(common_commit, head, *paths).map do |diff|
-            Gitlab::Git::Diff.new(diff)
+          head_commit_object = repo.rugged.rev_parse(head)
+          common_commit_object = repo.rugged.rev_parse(common_commit)
+
+          diff_commits = common_commit_object.diff(head_commit_object)
+
+          diff_commits.patches.map do |patch|
+            Gitlab::Git::Diff.new(patch)
           end
         rescue Grit::Git::GitTimeout
           raise TimeoutError.new("Diff.between exited with timeout")
@@ -34,6 +39,8 @@ module Gitlab
 
         if raw_diff.is_a?(Hash)
           init_from_hash(raw_diff)
+        elsif raw_diff.is_a?(Rugged::Diff::Patch)
+          init_from_rugged(raw_diff)
         else
           init_from_grit(raw_diff)
         end
@@ -56,6 +63,17 @@ module Gitlab
       end
 
       private
+
+      def init_from_rugged(patch)
+        @old_path = patch.delta.old_file[:path]
+        @new_path = patch.delta.new_file[:path]
+        @a_mode = patch.delta.old_file[:mode].to_s(8)
+        @a_mode = patch.delta.new_file[:mode].to_s(8)
+        @new_file = patch.delta.added?
+        @deleted_file = patch.delta.deleted?
+        @renamed_file = !@new_file && !@deleted_file
+        @hunks = patch.hunks
+      end
 
       def init_from_grit(grit)
         @raw_diff = grit
