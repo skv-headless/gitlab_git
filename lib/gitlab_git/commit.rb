@@ -165,7 +165,10 @@ module Gitlab
       end
 
       def diffs
-        raw_commit.diffs.map { |diff| Gitlab::Git::Diff.new(diff) }
+        commit = Rugged::Repository.new(raw_commit.repo.path).lookup(self.id)
+        diff = commit.parents[0].diff(commit)
+        patches = diff.patches
+        patches.map { |patch| Gitlab::Git::Diff.new(patch) }
       end
 
       def parents

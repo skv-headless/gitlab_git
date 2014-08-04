@@ -9,7 +9,7 @@ module Gitlab
       attr_accessor :raw_diff
 
       # Diff properties
-      attr_accessor :old_path, :new_path, :a_mode, :b_mode, :diff
+      attr_accessor :old_path, :new_path, :a_mode, :b_mode, :diff, :hunks
 
       # Stats properties
       attr_accessor  :new_file, :renamed_file, :deleted_file
@@ -34,7 +34,10 @@ module Gitlab
 
         if raw_diff.is_a?(Hash)
           init_from_hash(raw_diff)
+        elsif raw_diff.is_a?(Rugged::Patch)
+          init_from_rugged(raw_diff)
         else
+          #TODO remove this will be great
           init_from_grit(raw_diff)
         end
       end
@@ -71,6 +74,18 @@ module Gitlab
         serialize_keys.each do |key|
           send(:"#{key}=", raw_diff[key.to_sym])
         end
+      end
+
+      def init_from_rugged(rugged_patch)
+        delta = rugged_patch.delta
+        self.old_path = delta.old_file[:path]
+        self.new_path = delta.new_file[:path]
+        self.a_mode = delta.old_file[:mode]
+        self.b_mode = delta.new_file[:mode]
+        self.new_file = delta.added?
+        self.deleted_file = delta.deleted?
+        self.renamed_file = !new_file && !deleted_file
+        self.hunks = rugged_patch.hunks
       end
     end
   end
