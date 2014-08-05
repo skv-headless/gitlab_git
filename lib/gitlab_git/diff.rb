@@ -58,6 +58,11 @@ module Gitlab
         hash
       end
 
+      def submodule?
+        #TODO NOTE FIXME added submodules a_mode is nil in grit
+        a_mode == "160000" || b_mode == "160000"
+      end
+
       private
 
       def init_from_grit(grit)
@@ -80,8 +85,8 @@ module Gitlab
         delta = rugged_patch.delta
         self.old_path = delta.old_file[:path]
         self.new_path = delta.new_file[:path]
-        self.a_mode = delta.old_file[:mode]
-        self.b_mode = delta.new_file[:mode]
+        self.a_mode = delta.old_file[:mode].to_s(8)
+        self.b_mode = delta.new_file[:mode].to_s(8)
         self.new_file = delta.added?
         self.deleted_file = delta.deleted?
         self.renamed_file = !new_file && !deleted_file
